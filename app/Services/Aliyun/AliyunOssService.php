@@ -12,14 +12,14 @@ class AliyunOssService implements IAliyunOss
         $this->config = $config;
     }
 
-    public function policy(array $params)
+    public function policy(string $object, string $bucket = '', int $expire = 180)
     {
         $oss = config('aliyun', []);
         $id = $oss['appKeyId'] ?? '';
         $key = $oss['appSecret'] ?? '';
         $host = 'https://' . $oss['bucket'] . '.' . $oss['endpoint'];
 
-        $callbackUrl = 'https://' . $_SERVER['HTTP_HOST'] . DIRECTORY_SEPARATOR . 'notify/aliyun/policy/';
+        $callbackUrl = 'https://wuyingnong.cn/notify/aliyun/policy/';
         $callbackParam = [
             'callbackUrl' => $callbackUrl,
             'callbackBody' => '',
@@ -28,10 +28,10 @@ class AliyunOssService implements IAliyunOss
         $callbackString = json_encode($callbackParam);
         $base64CallbackBody = base64_encode($callbackString);
         $now = time();
-        $expire = 30;
+        $expire = 180;
         $end = $now + $expire;
         $expiration = $this->gmtISO8601($end);
-        $dir = '/uploads/' . date('Ym', time()) . '/';
+        $dir = dirname($object);
         //最大文件大小.用户可以自己设置
         $condition = array(0 => 'content-length-range', 1 => 0, 2 => 1048576000);
         $conditions[] = $condition;
@@ -41,22 +41,23 @@ class AliyunOssService implements IAliyunOss
         $conditions[] = $start;
 
         $arr = array('expiration' => $expiration, 'conditions' => $conditions);
-        //echo json_encode($arr);
-        //return;
         $policy = json_encode($arr);
         $base64_policy = base64_encode($policy);
         $string_to_sign = $base64_policy;
         $signature = base64_encode(hash_hmac('sha1', $string_to_sign, $key, true));
 
-        $response = array();
-        $response['accessid'] = $id;
-        $response['host'] = $host;
-        $response['policy'] = $base64_policy;
-        $response['signature'] = $signature;
-        $response['expire'] = $end;
-        $response['callback'] = $base64CallbackBody;
-        $response['dir'] = $dir;
-        return $response;
+        return [
+            'host' => $host,
+            'data' => [
+                'key' => $object,
+                'policy' => $base64_policy,
+                'OSSAccessKeyId' => $id,
+                'success_action_status' => 200,
+                'callback' => $base64CallbackBody,
+                'signature' => $signature,
+                'expire' => $end,
+            ]
+        ];
     }
 
     private function gmtISO8601($time): string
