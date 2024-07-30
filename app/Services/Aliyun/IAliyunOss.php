@@ -7,10 +7,8 @@ interface IAliyunOss
     /**
      * 直传秘钥
      *
-     * @param string $bucket
-     * @param string $object
-     * @param int $expire
+     * @param array $params
      * @return mixed
      */
-    public function policy(string $object, string $bucket = '' , int $expire = 180);
+    public function policy(array $params);
 }
